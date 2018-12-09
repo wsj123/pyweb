@@ -37,7 +37,7 @@ async def select(sql,args,size=None):
 			if size:
 				rs = await cur.fetchmany(size)
 			else:
-				rs = await cur.fetchAll()
+				rs = await cur.fetchall()
 		logging.info('rows returned: %s' % len(rs))
 		return rs
 
@@ -196,6 +196,7 @@ class Model(dict,metaclass=ModelMetaclass):
 		if orderBy:
 			sql.append('order by')
 			sql.append(orderBy)
+		limit = kw.get('limit', None)	
 		if limit is not None:
 			sql.append('limit')
 
