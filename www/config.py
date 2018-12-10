@@ -54,5 +54,4 @@ except ImportError:
 
 
 configs = toDict(configs)
-print(configs)
 
