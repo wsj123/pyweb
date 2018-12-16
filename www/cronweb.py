@@ -77,7 +77,7 @@ def has_request_arg(fn):
 		if name == 'request':
 			found = True
 			continue
-		if found and (param.kind != inspect.Parameter.VAR_POSITIONAL and param.kind != inspect.inspect.Parameter.KEYWORD_ONLY and param.kind != inspect.Parameter.VAR_KEYWORD):
+		if found and (param.kind != inspect.Parameter.VAR_POSITIONAL and param.kind != inspect.Parameter.KEYWORD_ONLY and param.kind != inspect.Parameter.VAR_KEYWORD):
 			raise ValueError('request parameter must be the last named parameter in funtion: %s%s' % (fn.__name__,str(sig)))
 
 	return found
@@ -118,7 +118,7 @@ class RequestHandler(object):
 				qs = request.query_string
 				if qs:
 					kw = dict()
-					for k, v in parse.parse.qs(qs, True).items():
+					for k, v in parse.parse_qs(qs, True).items():
 						kw[k] = v[0]
 
 		if kw is None:

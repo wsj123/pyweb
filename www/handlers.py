@@ -7,12 +7,11 @@ __author__ = 'Michael Liao'
 
 import re, time, json, logging, hashlib, base64, asyncio
 
-import markdown2
 
 from aiohttp import web
 
-from coroweb import get, post
-from apis import Page, APIValueError, APIResourceNotFoundError
+from cronweb import get, post
+from apis import APIValueError, APIResourceNotFoundError,APIError,APIPermissionError,Page
 
 from models import User, Comment, Blog, next_id
 from config import configs
@@ -49,7 +48,7 @@ def text2html(text):
     return ''.join(lines)
 
 @asyncio.coroutine
-def cookie2user(cookie_str):
+async def cookie2user(cookie_str):
     '''
     Parse cookie and load user if cookie is valid.
     '''
@@ -62,7 +61,7 @@ def cookie2user(cookie_str):
         uid, expires, sha1 = L
         if int(expires) < time.time():
             return None
-        user = yield from User.find(uid)
+        user = await User.find(uid)
         if user is None:
             return None
         s = '%s-%s-%s-%s' % (uid, user.passwd, expires, _COOKIE_KEY)
@@ -146,6 +145,13 @@ def signout(request):
     logging.info('user signed out.')
     return r
 
+@get('/manage/blogs')
+def manage_blogs(*, page='1'):
+    return {
+        '__template__': 'manage_blogs.html',
+        'page_index': get_page_index(page)
+    }    
+
 @get('/manage/blogs/create')
 def manage_create_blog():
     return {
@@ -180,7 +186,32 @@ async def api_register_user(*, email, name, passwd):
     r.body = json.dumps(user, ensure_ascii=False).encode('utf-8')
     return r
 
+@get('/api/blogs')
+async def api_blogs(*, page='1'):
+    page_index = get_page_index(page)
+    num = await Blog.findNumber('count(id)')
+    p = Page(num, page_index)
+    if num == 0:
+        return dict(page=p, blogs=())
+
+    blogs = await Blog.findAll(orderBy='created_at desc', limit=(p.offset, p.limit))
+    return dict(page=p, blogs=blogs)        
+
+@get('/api/blogs/{id}')
+async def api_get_blog(*, id):
+    blog = await Blog.find(id)
+    return blog    
+
 
 @post('/api/blogs')
-def api_create_blog(request, *, name, summary, content):
+async def api_create_blog(request, *, name, summary, content):
     check_admin(request)
+    if not name or not name.strip():
+        raise APIValueError('name', 'name cannot be empty.')
+    if not summary or not summary.strip():
+        raise APIValueError('summary', 'summary cannot be empty.')
+    if not content or not content.strip():
+        raise APIValueError('content', 'content cannot be empty.')
+    blog = Blog(user_id=request.__user__.id, user_name=request.__user__.name, user_image=request.__user__.image, name=name.strip(), summary=summary.strip(), content=content.strip())    
+    await blog.save()
+    return blog
